@@ -1,17 +1,17 @@
 const { Thought, User } = require('../models');
 
 const thoughtController = {
+
     // Get all thoughts
     getAllThoughts(req, res) {
-        Thought.find()
-            .then((thoughts) => res.json(thoughts))
-            .catch((err) => res.status(500).json(err));
+        Thought.find().then(thoughtData => {
+            res.json(thoughtData)
+        }).catch((err) => res.status(500).json(err))
     },
 
     // Get one thought by id
     getOneThought(req, res) {
         Thought.findOne({ _id: req.params.thoughtId })
-            .select('-__v')
             .then((thought) => {
                 !thought
                     ? res.status(404).json({ message: 'No thought found with that id' })
@@ -59,13 +59,21 @@ const thoughtController = {
     // Delete thought
     deleteThought(req, res) {
         Thought.findOneAndDelete({ _id: req.params.thoughtId })
-            .then((thought) => {
-                if (!thought) {
-                    return res.status(404).json({ message: 'No thought with this id.' })
+            .then(deletedThought => {
+                if (!deletedThought) {
+                    res.status(404).json({ message: 'No thought with that ID!' });
+                    return;
                 }
-                res.json({ message: 'Thought deleted.' })
+                return User.findOneAndUpdate(
+                    { _id: req.params.username },
+                    { $pull: { thoughts: req.params.thoughtId } },
+                    { new: true }
+                );
             })
-            .catch((err) => res.status(500).json(err));
+            .then((userData) => {
+                res.json(userData);
+            })
+            .catch(err => res.json(err))
     },
 
     // Add reaction to thought
@@ -83,11 +91,11 @@ const thoughtController = {
             .catch((err) => res.status(500).json(err));
     },
 
-    // Remove reaction from thought
-    removeReaction(req, res) {
+    // Delete reaction from thought
+    deleteReaction(req, res) {
         Thought.findOneAndUpdate(
             { _id: req.params.thoughtId },
-            { $pull: { reactions: req.body } },
+            { $pull: { reactions: { reactionId: req.params.reactionId } } },
             { runValidators: true, new: true }
         )
             .then((thought) =>
@@ -100,3 +108,5 @@ const thoughtController = {
 
 };
 
+
+module.exports = thoughtController;
